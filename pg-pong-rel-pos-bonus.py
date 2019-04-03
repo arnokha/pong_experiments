@@ -4,6 +4,7 @@ import pickle
 import gym
 import matplotlib.pyplot as plt
 import sys
+import time
 
 # Take command line input for number of hidden units to use
 if len(sys.argv) == 1:
@@ -17,7 +18,7 @@ else:
 # hyperparameters
 H = 100 # number of hidden layer neurons
 batch_size = 60 # every how many episodes to do a param update?
-learning_rate = 1e-4
+learning_rate = 1e-4 
 gamma = 0.99 # discount factor for reward
 decay_rate = 0.99 # decay factor for RMSProp leaky sum of grad^2
 resume = False # resume from previous checkpoint?
@@ -154,7 +155,11 @@ bx = 6; by = 7; bvx = 8; bvy = 9
 
 bonus_this_e = 0
 
-while True:
+#while True:
+start = time.time()
+
+#for i in range (1500):
+while(episode_number < 1500):
     if render: env.render()
 
     # preprocess the observation
@@ -167,25 +172,29 @@ while True:
         dof_ball_y = positions[by] - prev_positions[by]
         x = np.array(positions[:-2] + [dof_ball_x, dof_ball_y])
         if positions[4] < 0 and positions[5] > 0 and positions[3] < 5 and positions[3] > -1 and dof_ball_x > 0:
-            if bonus_this_e < .95:
+            if bonus_this_e < .75:
                 bonus = .2
                 bonus_this_e += bonus
-                print("Huge Positioning bonus! ep " + str(episode_number))
+                #print("Huge Positioning bonus! ep " + str(episode_number))
         if positions[4] < 0 and positions[5] > 0 and positions[3] < 10 and positions[3] > -1 and dof_ball_x > 0:
             if bonus_this_e < 0.55: 
                 bonus = .1
                 bonus_this_e += bonus
-                print("Big Positioning bonus! ep " + str(episode_number))
-        elif positions[4] < 0 and positions[5] > 0 and positions[3] < 20 and positions[3] > -1 and dof_ball_x > 0:
-            if bonus_this_e < 0.25: 
-                bonus = 0.05
-                bonus_this_e += bonus
-                print("Positioning bonus! ep " + str(episode_number))
-        elif positions[4] < 0 and positions[5] > 0 and positions[3] < 30 and positions[3] > -1 and dof_ball_x > 0:
-            if bonus_this_e < 0.05: 
-                bonus = 0.01
-                bonus_this_e += bonus
-                print("Mini Positioning bonus! ep " + str(episode_number))
+        #        print("Big Positioning bonus! ep " + str(episode_number))
+        #elif positions[4] < 0 and positions[5] > 0 and positions[3] < 20 and positions[3] > -1 and dof_ball_x > 0:
+        #    if bonus_this_e < 0.25: 
+        #        bonus = 0.05
+        #        bonus_this_e += bonus
+        #        print("Positioning bonus! ep " + str(episode_number))
+        #elif positions[4] < 0 and positions[5] > 0 and positions[3] < 30 and positions[3] > -1 and dof_ball_x > 0:
+        #    if bonus_this_e < 0.05: 
+        #        bonus = 0.01
+        #        bonus_this_e += bonus
+        #        print("Mini Positioning bonus! ep " + str(episode_number))
+        if episode_number > 1000: bonus /= 2
+        if episode_number > 2000: bonus /= 4
+        if episode_number > 4000: bonus /= 8
+        if episode_number > 5000: bonus =0
     else:
         x = np.zeros(D)
     
@@ -240,15 +249,21 @@ while True:
         # boring book-keeping
         running_reward = reward_sum if running_reward is None else running_reward * 0.99 + reward_sum * 0.01
         reward_sum = 0
-        if episode_number % 20 == 0:
-            print('resetting env. episode reward total was ' + str(reward_sum) + '. running mean: ' + str(running_reward))
+        #if episode_number % 20 == 0:
+        #    print('resetting env. episode reward total was ' + str(reward_sum) + '. running mean: ' + str(running_reward))
         if episode_number % 200 == 0:
             #print('resetting env. episode reward total was ' + str(reward_sum) + '. running mean: ' + str(running_reward))
-            pickle.dump(model, open('models/relative_save_h'+ str(H) +'_' + str(save_counter) + '.p', 'wb'))
+            pickle.dump(model, open('models/relative_bonus_save_h'+ str(H) +'_' + str(save_counter) + '.p', 'wb'))
             save_counter +=1
         observation = env.reset() # reset env
         prev_x = None
 
         #if reward == 1: # Pong has either +1 or -1 reward exactly when game ends.
-        if reward == 1:
-            print ('ep ' + str(episode_number) + ': game finished, reward: ' + str(reward) + ('' if reward == -1 else ' !!!!!!!!'))
+        #if reward == 1:
+    if reward != 0:
+            #print ('ep ' + str(episode_number) + ': game finished, reward: ' + str(reward) + ('' if reward == -1 else ' !!!!!!!!'))
+        print(episode_number, reward)
+
+
+end = time.time()
+print(end - start)

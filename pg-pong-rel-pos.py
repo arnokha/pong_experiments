@@ -4,6 +4,7 @@ import pickle
 import gym
 import matplotlib.pyplot as plt
 import sys
+import time
 
 # Take command line input for number of hidden units to use
 if len(sys.argv) == 1:
@@ -16,14 +17,14 @@ else:
 
 # hyperparameters
 H = 100 # number of hidden layer neurons
-batch_size = 10 # every how many episodes to do a param update?
+batch_size = 60 # every how many episodes to do a param update?
 learning_rate = 1e-4
 gamma = 0.99 # discount factor for reward
 decay_rate = 0.99 # decay factor for RMSProp leaky sum of grad^2
 resume = False # resume from previous checkpoint?
 save_counter = 0
 
-render = True
+render = False
 plotting = False
 
 ## Model initialization
@@ -39,8 +40,8 @@ else:
     model['W1'] = np.random.randn(H,D) / np.sqrt(D) # "Xavier" initialization
     model['W2'] = np.random.randn(H) / np.sqrt(H)
 
-grad_buffer = { k : np.zeros_like(v) for k,v in model.iteritems() } # update buffers that add up gradients over a batch
-rmsprop_cache = { k : np.zeros_like(v) for k,v in model.iteritems() } # rmsprop memory
+grad_buffer = { k : np.zeros_like(v) for k,v in model.items() } # update buffers that add up gradients over a batch
+rmsprop_cache = { k : np.zeros_like(v) for k,v in model.items() } # rmsprop memory
 
 def sigmoid(x):
     return 1.0 / (1.0 + np.exp(-x)) # sigmoid "squashing" function to interval [0,1]
@@ -59,7 +60,7 @@ def discount_rewards(r):
     """ take 1D float array of rewards and compute discounted reward """
     discounted_r = np.zeros_like(r)
     running_add = 0
-    for t in reversed(xrange(0, r.size)):
+    for t in reversed(range(0, r.size)):
         if r[t] != 0: running_add = 0 # reset the sum, since this was a game boundary (pong specific!)
         running_add = running_add * gamma + r[t]
         discounted_r[t] = running_add
@@ -152,7 +153,9 @@ p2x = 3; p2y1 = 4; p2y2 = 5
 bx = 6; by = 7; bvx = 8; bvy = 9
 
 
-while True:
+start = time.time()
+while(episode_number < 1500):
+#while True:
     if render: env.render()
 
     # preprocess the observation
@@ -207,7 +210,7 @@ while True:
 
         # perform rmsprop parameter update every batch_size episodes
         if episode_number % batch_size == 0:
-            for k,v in model.iteritems():
+            for k,v in model.items():
                 g = grad_buffer[k] # gradient
                 rmsprop_cache[k] = decay_rate * rmsprop_cache[k] + (1 - decay_rate) * g**2
                 model[k] += learning_rate * g / (np.sqrt(rmsprop_cache[k]) + 1e-5)
@@ -215,13 +218,19 @@ while True:
 
         # boring book-keeping
         running_reward = reward_sum if running_reward is None else running_reward * 0.99 + reward_sum * 0.01
-        #print 'resetting env. episode reward total was %f. running mean: %f' % (reward_sum, running_reward)
         reward_sum = 0
         if episode_number % 200 == 0:
+            #print('resetting env. episode reward total was ' + str(reward_sum) + '. running mean: ' + str(running_reward))
             pickle.dump(model, open('models/relative_save_h'+ str(H) +'_' + str(save_counter) + '.p', 'wb'))
             save_counter +=1
         observation = env.reset() # reset env
         prev_x = None
 
-        if reward == 1: # Pong has either +1 or -1 reward exactly when game ends.
-            print ('ep %d: game finished, reward: %f' % (episode_number, reward)) + ('' if reward == -1 else ' !!!!!!!!')
+    if reward != 0: # Pong has either +1 or -1 reward exactly when game ends.
+        print(episode_number, reward)
+        #if reward == 1 or (reward != 0 and episode_number % 500 == 0):
+            #print ('ep ' + str(episode_number) + ': game finished, reward: ' + str(reward) + ('' if reward == -1 else ' !!!!!!!!'))
+
+
+end = time.time()
+print(end - start)
